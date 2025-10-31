@@ -6,6 +6,9 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
 });
 
+
+
+
 // 🔹 Helper function to fetch real coordinates
 async function getCoordinates(place: string) {
   try {
@@ -26,6 +29,10 @@ async function getCoordinates(place: string) {
 export async function POST(req: NextRequest) {
   try {
     const { destination, days, budget, preferences, date } = await req.json();
+    // 🌍 Try fetching real-time flight and hotel data from Amadeus
+
+
+
 
     const month = new Date(date).getMonth();
 const monthName = new Date(date).toLocaleString("en-GB", { month: "long" });
@@ -48,6 +55,7 @@ const seasonWeather = isHighSeason
     Plan a ${days}-day trip to ${destination} under £${budget}.
     Focus on traveller preferences: ${preferences.join(", ")}.
     Whererver their recommended accomdation is, keep all activities and itinenary within that area
+
 
 Adjust prices realistically — flights and hotels are ${isHighSeason ? "slightly higher" : "slightly cheaper"}.
 Use a total adjusted budget of about £${Math.round(adjustedBudget)}.
@@ -184,7 +192,13 @@ try {
 
 
 
-    return NextResponse.json({ ok: true, data });
+// ✅ Attach live data BEFORE returning
+
+
+// ✅ Return success response
+return NextResponse.json({ ok: true, data });
+
+
   } catch (error: any) {
     console.error("Groq error:", error);
     return NextResponse.json(

@@ -2,57 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: process.env.GROQ_API_KEY!,
 });
 
 export async function POST(req: NextRequest) {
   try {
-    const { feedback, currentTrip } = await req.json();
+    const { currentTrip, feedback } = await req.json();
 
     const prompt = `
-    You are TripMind — an intelligent AI travel planner.
-    
-    The user said: "${feedback}"
-    
-    Here is the current trip JSON:
-    ${JSON.stringify(currentTrip, null, 2)}
-    
-    Your job:
-    - Modify the trip based on the user's feedback.
-    - ALWAYS return the full JSON, never partials.
-    - Include all top-level fields even if unchanged:
-      "summary", "budget_breakdown", "accommodation", and "itinerary".
-    - Keep the same JSON keys and structure.
-    - Update the summary so it reflects the refined trip.
-    - Ensure valid JSON only (no markdown, no code fences, no extra text).
-    
-    The final JSON must look like:
-    {
-      "summary": "...",
-      "budget_breakdown": { ... },
-      "accommodation": { ... },
-      "itinerary": [ ... ]
-    }
-    `;
-    
-    
+You are TripMind, an expert travel planner.
+The user gave feedback: "${feedback}".
+Here is the current trip JSON that must be refined while keeping all structure intact:
+${JSON.stringify(currentTrip, null, 2)}
+
+Update ONLY relevant parts (e.g., modify activities, add or adjust a day) but preserve:
+- The "summary" (keep or slightly enhance it, never remove it)
+- The "budget_breakdown"
+- The "accommodation"
+- The "itinerary" array structure
+
+Respond strictly as VALID JSON, same schema, starting with { and ending with }.
+`;
 
     const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [{ role: "user", content: prompt }],
     });
 
-    const message = completion.choices[0].message?.content?.trim() || "{}";
-    const updatedTrip = JSON.parse(
-      message.replace(/```json/i, "").replace(/```/g, "").trim()
-    );
+    let message = completion.choices[0].message?.content?.trim() || "{}";
 
-    return NextResponse.json({ ok: true, data: updatedTrip });
+    // 🧠 Clean up and parse
+    const start = message.indexOf("{");
+    const end = message.lastIndexOf("}") + 1;
+    const jsonPart = message.slice(start, end);
 
+    let refinedTrip;
+    try {
+      refinedTrip = JSON.parse(jsonPart);
+    } catch (err) {
+      console.warn("Failed to parse refined JSON:", err);
+      refinedTrip = currentTrip; // fallback to old one
+    }
+
+    return NextResponse.json({ ok: true, data: refinedTrip });
   } catch (error: any) {
     console.error("Refine error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to refine trip" },
+      { ok: false, error: error.message || "Failed to refine trip" },
       { status: 500 }
     );
   }
