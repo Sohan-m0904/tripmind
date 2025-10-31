@@ -34,7 +34,10 @@ export default function TripMap({ locations }: { locations: Location[] }) {
     <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200 h-[400px]">
       {isLoaded ? (
         <GoogleMap
-          onLoad={(map) => (mapRef.current = map)}
+          onLoad={(map) => {
+  mapRef.current = map;
+}}
+
           mapContainerStyle={{ width: "100%", height: "100%" }}
           center={center}
           zoom={6}
